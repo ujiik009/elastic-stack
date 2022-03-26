@@ -9,9 +9,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.26.1",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.0.0",
     "moment": "^2.29.1",
-    "mongodb": "4.4"
+    "mongodb": "4.4",
+    "underscore": "^1.13.2"
   }
 }

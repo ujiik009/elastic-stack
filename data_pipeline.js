@@ -17,7 +17,7 @@ async function run() {
         const database = client.db('nakamotoDatabase');
         const PlayerGamePlayData = database.collection('playergameplaydatas');
         // Query for a movie that has the title 'Back to the Future'
-        const query = { title: 'Back to the Future' };
+        
         const gamePlayData = await PlayerGamePlayData.aggregate([
             {
                 $lookup: {
@@ -114,6 +114,7 @@ async function run() {
         await gamePlayData.forEach((item, index) => {
             item.createdAt = moment(item.createdAt).format("YYYY-MM-DD HH:mm:ss")
             item.day_of_week = moment(item.createdAt).format("dddd")
+         
             data.push(item)
         });
 
