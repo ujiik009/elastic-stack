@@ -3,6 +3,8 @@ const axios = require('axios');
 const { MongoClient } = require("mongodb");
 var moment = require('moment');
 const uri = process.env.MONGODB_URL;
+const urlWebHook = process.env.DISCORD_WEB_HOOK || "https://discord.com/api/webhooks/956083561646133280/cZQqbAWZDvPTUY3pXbFZK9dETX9oY14CPvC7H5pn2tyFP-9E2-EVsPwI0tfnJer_z9bC"
+
 const client = new MongoClient(uri);
 const _ = require('underscore')
 var fs = require('fs');
@@ -53,7 +55,6 @@ async function run() {
             }
         }
 
-        console.log(lastTimestamp);
 
         var mongoQuery = [
             {
@@ -109,19 +110,19 @@ async function run() {
         const gamePlayData = await PlayerGamePlayData.aggregate(mongoQuery);
         var data = []
         await gamePlayData.forEach((item, index) => {
-       
-            if(item._id !== undefined) delete item._id
+
+            if (item._id !== undefined) delete item._id
 
             item.createdAt = moment(item.createdAt).format("YYYY-MM-DD HH:mm:ss")
             item.day_of_week = moment(item.createdAt).format("dddd")
             item["@timestamp"] = new Date(item.createdAt)
-            if(lastTimestamp!=null){
-                
-                if(item["@timestamp"] > new Date(lastTimestamp)){
+            if (lastTimestamp != null) {
+
+                if (item["@timestamp"] > new Date(lastTimestamp)) {
                     data.push(item)
                 }
             }
-            
+
         })
         console.log(new Date(), "[Get Data from Mongo]", `Number of record : ${data.length}`);
         if (data.length > 0) {
@@ -134,11 +135,11 @@ async function run() {
                     data_new_line.push({ "index": { "_index": "game_data_transcation" } })
                     data_new_line.push(item)
                 })
-               return data_new_line
-               .map(JSON.stringify)
-               .join("\n")+"\n"
+                return data_new_line
+                    .map(JSON.stringify)
+                    .join("\n") + "\n"
             }).map((data_body) => {
-               
+
                 return axios.post('http://localhost:9200/_bulk', data_body, {
                     auth: {
                         username: process.env.ELASTICSEARCH_USER,
@@ -150,10 +151,18 @@ async function run() {
             console.log(new Date(), "[Import to Elasticsearch]", `Starting import`);
             Promise.all(array_promises)
                 .then((data) => {
-                    data.map((res_item,index)=>{
-                        fs.writeFileSync(`response_${index}.json`,JSON.stringify(res_item.data))
-                       
+                    var response_data = data.map((x)=>{
+                        return x.data
                     })
+                    var error = data.some((result) => {
+                        return result.data.errors == true
+                    })
+                    if (error == true) {
+                        fs.writeFileSync(`response.json`, JSON.stringify(response_data))
+                        sendMessage("Import to Elasticsearch", "Error cannot import ", false)
+                    } else {
+                        sendMessage("Import to Elasticsearch", `Import Successfully [${data.length} Record]`, true)
+                    }
                     console.log(new Date(), "[Import to Elasticsearch]", `Starting import`, "[SUCCESS]");
                 })
                 .catch((error) => {
@@ -178,5 +187,19 @@ async function run() {
     }
 }
 
+function sendMessage(topic = "TEST", message, status = true, username = "NAKA-BOT") {
+    var formatMessage = `
+\`\`\`
+${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} [${topic}]  ${message} 
+\`\`\``
+    axios.post(urlWebHook, JSON.stringify({
+        username: username,
+        content: formatMessage
+    }), {
+        headers: {
+            "Content-Type": "application/json"
+        }
+    })
+}
 
 run().catch(console.dir);
