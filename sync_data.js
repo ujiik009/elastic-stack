@@ -203,7 +203,7 @@ ${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} 
 }
 
 
-cron.schedule('*/2 * * * *', function () {
+cron.schedule('*/5 * * * *', function () {
     run().catch(console.dir);
 });
 
