@@ -366,3 +366,11 @@ instead of `elasticsearch`.
 This repository is a forked/trimmed version of [docker-elk](https://github.com/deviantony/docker-elk)
 
 index for elasticsearch `game_data_transcation`
+
+
+## document for cronjob
+[cronjob](https://dev.to/prakhil_tp/cron-job-for-node-scripts-1fa6?fbclid=IwAR2-sSBvReLrMkzaJNG-WjLVs-z-uviEtxTYdVnjfGNttwxhaFuN_RhCfGs)
+
+```shell
+*/5 * * * * /root/elastic-stack/script.sh >> /root/elastic-stack/naka_sync.log
+```

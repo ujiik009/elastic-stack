@@ -4,7 +4,7 @@ const { MongoClient } = require("mongodb");
 var moment = require('moment');
 const uri = process.env.MONGODB_URL;
 const urlWebHook = process.env.DISCORD_WEB_HOOK || "https://discord.com/api/webhooks/956083561646133280/cZQqbAWZDvPTUY3pXbFZK9dETX9oY14CPvC7H5pn2tyFP-9E2-EVsPwI0tfnJer_z9bC"
-
+const cron = require('node-cron');
 const client = new MongoClient(uri);
 const _ = require('underscore')
 var fs = require('fs');
@@ -151,7 +151,7 @@ async function run() {
             console.log(new Date(), "[Import to Elasticsearch]", `Starting import`);
             Promise.all(array_promises)
                 .then((data_output) => {
-                    var response_data = data_output.map((x)=>{
+                    var response_data = data_output.map((x) => {
                         return x.data
                     })
                     var error = data_output.some((result) => {
@@ -202,4 +202,8 @@ ${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} 
     })
 }
 
-run().catch(console.dir);
+
+cron.schedule('*/2 * * * *', function () {
+    run().catch(console.dir);
+});
+
