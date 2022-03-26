@@ -108,7 +108,7 @@ async function run() {
         ]
 
         const gamePlayData = await PlayerGamePlayData.aggregate(mongoQuery);
-        var data = []
+        var data_record = []
         await gamePlayData.forEach((item, index) => {
 
             if (item._id !== undefined) delete item._id
@@ -119,14 +119,14 @@ async function run() {
             if (lastTimestamp != null) {
 
                 if (item["@timestamp"] > new Date(lastTimestamp)) {
-                    data.push(item)
+                    data_record.push(item)
                 }
             }
 
         })
-        console.log(new Date(), "[Get Data from Mongo]", `Number of record : ${data.length}`);
-        if (data.length > 0) {
-            var data_per_page = _.chunk(data, 100)
+        console.log(new Date(), "[Get Data from Mongo]", `Number of record : ${data_record.length}`);
+        if (data_record.length > 0) {
+            var data_per_page = _.chunk(data_record, 100)
 
             var array_promises = data_per_page.map(page_item => {
                 var data_new_line = []
@@ -150,18 +150,18 @@ async function run() {
             })
             console.log(new Date(), "[Import to Elasticsearch]", `Starting import`);
             Promise.all(array_promises)
-                .then((data) => {
-                    var response_data = data.map((x)=>{
+                .then((data_output) => {
+                    var response_data = data_output.map((x)=>{
                         return x.data
                     })
-                    var error = data.some((result) => {
+                    var error = data_output.some((result) => {
                         return result.data.errors == true
                     })
                     if (error == true) {
                         fs.writeFileSync(`response.json`, JSON.stringify(response_data))
                         sendMessage("Import to Elasticsearch", "Error cannot import ", false)
                     } else {
-                        sendMessage("Import to Elasticsearch", `Import Successfully [${data.length} Record]`, true)
+                        sendMessage("Import to Elasticsearch", `Import Successfully [${data_record.length} Record]`, true)
                     }
                     console.log(new Date(), "[Import to Elasticsearch]", `Starting import`, "[SUCCESS]");
                 })
