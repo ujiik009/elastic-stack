@@ -30,7 +30,7 @@ async function run() {
 
         const database = client.db('nakamotoDatabase');
         const PlayerGamePlayData = database.collection('playergameplaydatas');
-
+        const gameItem = await database.collection("gameitems").find({}).toArray()
         var response = await axios.post('http://localhost:9200/game_data_transcation/_doc/_search', query, {
             auth: {
                 username: process.env.ELASTICSEARCH_USER,
@@ -78,7 +78,8 @@ async function run() {
                     avatar: "$profileDetails.avatar",
                     game_id: 1,
                     createdAt: 1,
-                    score: "$current_score"
+                    score: "$current_score",
+                    used_items: 1
                 },
             },
             {
@@ -102,7 +103,8 @@ async function run() {
                     // avatar: 1,
                     score: 1,
                     game: "$games.name",
-                    game_type: "$games.game_type"
+                    game_type: "$games.game_type",
+                    used_items: 1
                 }
             }
         ]
@@ -115,6 +117,21 @@ async function run() {
 
             item.createdAt = moment(item.createdAt).format("YYYY-MM-DD HH:mm:ss")
             item.day_of_week = moment(item.createdAt).format("dddd")
+            var [game_item] = item.used_items
+            var item_name = "unknow"
+            var item_qty = 0
+            var item_price_usd = 0
+            if (game_item != undefined) {
+                var find_item = gameItem.find(x => String(x._id) == String(game_item.item_id))
+                if (find_item != undefined) {
+                    item_name = find_item.name
+                    item_qty = game_item.qty
+                    item_price_usd = find_item.price
+                }
+            }
+            item.item_name = item_name
+            item.item_qty = item_qty
+            item.item_price_usd = item_price_usd
             item["@timestamp"] = new Date(item.createdAt)
             if (lastTimestamp != null) {
 
@@ -202,8 +219,8 @@ ${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} 
     })
 }
 
-
-cron.schedule('*/5 * * * *', function () {
-    run().catch(console.dir);
-});
+run().catch(console.dir);
+// cron.schedule('*/5 * * * *', function () {
+//     run().catch(console.dir);
+// });
 

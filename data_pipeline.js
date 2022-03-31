@@ -17,8 +17,17 @@ async function run() {
         const database = client.db('nakamotoDatabase');
         const PlayerGamePlayData = database.collection('playergameplaydatas');
         // Query for a movie that has the title 'Back to the Future'
-        
+        const gameItem = await database.collection("gameitems").find({}).toArray()
+
+
         const gamePlayData = await PlayerGamePlayData.aggregate([
+            // {
+            //     $match: {
+            //         createdAt: {
+            //             $gt: new Date("2022-03-31 12:00:00")
+            //         }
+            //     }
+            // },
             {
                 $lookup: {
                     from: "profiles",
@@ -35,7 +44,8 @@ async function run() {
                     avatar: "$profileDetails.avatar",
                     game_id: 1,
                     createdAt: 1,
-                    score: "$current_score"
+                    score: "$current_score",
+                    used_items: 1
                 },
             },
             {
@@ -59,12 +69,14 @@ async function run() {
                     // avatar: 1,
                     score: 1,
                     game: "$games.name",
-                    game_type: "$games.game_type"
+                    game_type: "$games.game_type",
+                    used_items: 1
                 }
             }
         ]);
         var data = []
         console.log(new Date(), "Start query", "[STARTING]");
+
         // "_id" : ObjectId("61b11238ea379415e8ba6516"),
         // "createdAt" : ISODate("2021-12-08T20:14:48.839Z"),
         // "game_id" : ObjectId("61976837dffe844091ab8e59"),
@@ -109,12 +121,40 @@ async function run() {
             {
                 id: "day_of_week",
                 title: "day_of_week"
+            },
+            {
+                id: "item_name",
+                title: "item_name"
+            },
+            {
+                id: "item_qty",
+                title: "item_qty"
+            },
+            {
+                id: "item_price_usd",
+                title: "item_price_usd"
             }
         ]
         await gamePlayData.forEach((item, index) => {
             item.createdAt = moment(item.createdAt).format("YYYY-MM-DD HH:mm:ss")
             item.day_of_week = moment(item.createdAt).format("dddd")
-         
+            // game item
+            var [game_item] = item.used_items
+            var item_name = "unknow"
+            var item_qty = 0
+            var item_price_usd = 0
+            if (game_item != undefined) {
+                var find_item = gameItem.find(x => String(x._id) == String(game_item.item_id))
+                if (find_item != undefined) {
+                    item_name = find_item.name
+                    item_qty = game_item.qty
+                    item_price_usd = find_item.price
+                }
+            }
+          
+            item.item_name = item_name
+            item.item_qty = item_qty
+            item.item_price_usd = item_price_usd
             data.push(item)
         });
 
