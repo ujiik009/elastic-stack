@@ -219,8 +219,8 @@ ${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} 
     })
 }
 
-run().catch(console.dir);
-// cron.schedule('*/5 * * * *', function () {
-//     run().catch(console.dir);
-// });
+
+cron.schedule('*/5 * * * *', function () {
+    run().catch(console.dir);
+});
 
