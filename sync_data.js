@@ -259,6 +259,7 @@ async function run() {
 }
 
 function sendMessage(topic = "TEST", message, status = true, username = "NAKA-BOT") {
+    return null
     var formatMessage = `
 \`\`\`
 ${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} [${topic}]  ${message} 
