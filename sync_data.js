@@ -76,6 +76,8 @@ async function run() {
                     player_id: "$profileDetails._id",
                     username: "$profileDetails.username",
                     avatar: "$profileDetails.avatar",
+                    country: "$profileDetails.country",
+                    room_id: 1,
                     game_id: 1,
                     createdAt: 1,
                     score: "$current_score",
@@ -95,18 +97,47 @@ async function run() {
             },
             {
                 $project: {
-                    // _id: 1,
+                    _id: 1,
                     createdAt: 1,
                     game_id: 1,
+                    room_id: 1,
                     player_id: 1,
                     username: 1,
                     // avatar: 1,
                     score: 1,
                     game: "$games.name",
                     game_type: "$games.game_type",
-                    used_items: 1
+                    used_items: 1,
+                    country:1 ,
                 }
-            }
+            },
+            {
+             $lookup: {
+                 from: 'gamerooms',
+                 localField: "room_id",
+                 foreignField: "_id",
+                 as: 'gamerooms'
+             },
+         },
+         {
+             $unwind: "$gamerooms",
+         },
+         {
+             $project: {
+                 _id: 1,
+                 createdAt: 1,
+                 game_id: 1,
+                 player_id: 1,
+                 username: 1,
+                 // avatar: 1,
+                 score: 1,
+                 game: 1,
+                 game_type: 1,
+                 used_items: 1,
+                 country:1 ,
+                 gamerooms :"$gamerooms"
+             },
+         },
         ]
 
         const gamePlayData = await PlayerGamePlayData.aggregate(mongoQuery);
@@ -121,18 +152,41 @@ async function run() {
             var item_name = "unknow"
             var item_qty = 0
             var item_price_usd = 0
+            var country = item.country
             if (game_item != undefined) {
                 var find_item = gameItem.find(x => String(x._id) == String(game_item.item_id))
                 if (find_item != undefined) {
-                    item_name = find_item.name
+                    item_name = find_item.name+' '+find_item.item_size
                     item_qty = game_item.qty
                     item_price_usd = find_item.price
                 }
+            }
+            if (country == undefined) {
+                country = "unknow"
             }
             item.item_name = item_name
             item.item_qty = item_qty
             item.item_price_usd = item_price_usd
             item["@timestamp"] = new Date(item.createdAt)
+            item.cost_price = item_qty*item_price_usd
+            item.country = country
+            if(item.gamerooms.history_user_play != undefined) {
+                var player = item.gamerooms.history_user_play.find(x => String(x.player_id) == String(item.player_id))
+
+                if (player){
+                    item.game_start = moment(player.timestamp).format("YYYY-MM-DD HH:mm:ss")
+                }else {
+                    item.game_start = item.createdAt
+                }
+                
+            } else {
+                item.game_start = item.createdAt
+            }
+            item.game_end = item.createdAt
+
+            var game_start = moment(item.game_start)
+            var game_end = moment(item.game_end)
+            item.time_play = Number(game_end.diff(game_start,"minute"))
             if (lastTimestamp != null) {
 
                 if (item["@timestamp"] > new Date(lastTimestamp)) {
