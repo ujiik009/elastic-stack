@@ -6,6 +6,7 @@ var moment = require('moment');
 var createCsvWriter = csvwriter.createObjectCsvWriter
 // Replace the uri string with your MongoDB deployment's connection string.
 
+var country_json = JSON.parse(fs.readFileSync("./country.json", "utf8"));
 
 
 const uri = process.env.MONGODB_URL;
@@ -24,90 +25,91 @@ async function run() {
             // {
             //     $match: {
             //         createdAt: {
-            //             $gt: new Date("2022-09-06 12:00:00"),
-            //             $lt: new Date("2022-09-07 12:00:00")
+            //             $gt: new Date("2022-08-01 00:00:00"),
+            //             $lt: new Date("2022-08-28 23:59:59")
             //         }
             //     }
             // },
-           //{$sort: {_id: -1}},
-           {
-               $lookup: {
-                   from: "profiles",
-                   localField: "player_id",
-                   foreignField: "_id",
-                   as: "profileDetails",
-               },
-           },
-           { $unwind: "$profileDetails" },
-           {
-               $project: {
-                   player_id: "$profileDetails._id",
-                   username: "$profileDetails.username",
-                   avatar: "$profileDetails.avatar",
-                   country: "$profileDetails.country",
-                   room_id: 1,
-                   game_id: 1,
-                   createdAt: 1,
-                   score: "$current_score",
-                   used_items: 1
-               },
-           },
-           {
-               $lookup: {
-                   from: "games",
-                   localField: "game_id",
-                   foreignField: "_id",
-                   as: "games",
-               },
-           },
-           {
-               $unwind: "$games",
-           },
-           {
-               $project: {
-                   _id: 1,
-                   createdAt: 1,
-                   game_id: 1,
-                   room_id: 1,
-                   player_id: 1,
-                   username: 1,
-                   // avatar: 1,
-                   score: 1,
-                   game: "$games.name",
-                   game_type: "$games.game_type",
-                   used_items: 1,
-                   country:1 ,
-               }
-           },
-           {
-            $lookup: {
-                from: 'gamerooms',
-                localField: "room_id",
-                foreignField: "_id",
-                as: 'gamerooms'
+            {
+                $lookup: {
+                    from: "profiles",
+                    localField: "player_id",
+                    foreignField: "_id",
+                    as: "profileDetails",
+                },
             },
-        },
-        {
-            $unwind: "$gamerooms",
-        },
-        {
-            $project: {
-                _id: 1,
-                createdAt: 1,
-                game_id: 1,
-                player_id: 1,
-                username: 1,
-                // avatar: 1,
-                score: 1,
-                game: 1,
-                game_type: 1,
-                used_items: 1,
-                country:1 ,
-                gamerooms :"$gamerooms"
+            { $unwind: "$profileDetails" },
+            {
+                $project: {
+                    player_id: "$profileDetails._id",
+                    username: "$profileDetails.username",
+                    avatar: "$profileDetails.avatar",
+                    country: "$profileDetails.country",
+                    room_id: 1,
+                    game_id: 1,
+                    createdAt: 1,
+                    score: "$current_score",
+                    used_items: 1
+                },
             },
-        },
-          
-       ]);
+            {
+                $lookup: {
+                    from: "games",
+                    localField: "game_id",
+                    foreignField: "_id",
+                    as: "games",
+                },
+            },
+            {
+                $unwind: "$games",
+            },
+            {
+                $project: {
+                    _id: 1,
+                    createdAt: 1,
+                    game_id: 1,
+                    room_id: 1,
+                    player_id: 1,
+                    username: 1,
+                    // avatar: 1,
+                    score: 1,
+                    game: "$games.name",
+                    game_type: "$games.game_type",
+                    used_items: 1,
+                    country: 1,
+                    play_to_earn: "$games.play_to_earn",
+                }
+            },
+            {
+                $lookup: {
+                    from: 'gamerooms',
+                    localField: "room_id",
+                    foreignField: "_id",
+                    as: 'gamerooms'
+                },
+            },
+            {
+                $unwind: "$gamerooms",
+            },
+            {
+                $project: {
+                    _id: 1,
+                    createdAt: 1,
+                    game_id: 1,
+                    player_id: 1,
+                    username: 1,
+                    // avatar: 1,
+                    score: 1,
+                    game: 1,
+                    game_type: 1,
+                    used_items: 1,
+                    country: 1,
+                    gamerooms: "$gamerooms",
+                    play_to_earn: 1
+                },
+            },
+
+        ]);
         var data = []
         console.log(new Date(), "Start query", "[STARTING]");
 
@@ -128,10 +130,10 @@ async function run() {
                 id: "game_id",
                 title: "game_id"
             },
-            {
-                id: "player_id",
-                title: "player_id"
-            },
+            // {
+            //     id: "player_id",
+            //     title: "player_id"
+            // },
             {
                 id: "username",
                 title: "username"
@@ -175,7 +177,7 @@ async function run() {
             {
                 id: "country",
                 title: "country"
-            }, 
+            },
             {
                 id: "game_start",
                 title: "game_start"
@@ -188,44 +190,49 @@ async function run() {
                 id: "time_play",
                 title: "time_play"
             },
+            {
+                id: "play_to_earn",
+                title: "play_to_earn"
+            },
         ]
-        let i =0
+        let i = 0
         await gamePlayData.forEach((item, index) => {
             item.createdAt = moment(item.createdAt).format("YYYY-MM-DD HH:mm:ss")
             item.day_of_week = moment(item.createdAt).format("dddd")
             // game item
             var [game_item] = item.used_items
-            var item_name = "unknow"
+            var item_name = "unknown"
             var item_qty = 0
             var item_price_usd = 0
             var country = item.country
             if (game_item != undefined) {
                 var find_item = gameItem.find(x => String(x._id) == String(game_item.item_id))
                 if (find_item != undefined) {
-                    item_name = find_item.name+' '+find_item.item_size
+                    item_name = find_item.name + ' ' + find_item.item_size
                     item_qty = game_item.qty
                     item_price_usd = find_item.price
                 }
             }
-            if (country == undefined) {
-                country = "unknow"
-            }
-          
+
+
+
+
             item.item_name = item_name
             item.item_qty = item_qty
             item.item_price_usd = item_price_usd
-            item.cost_price = item_qty*item_price_usd
-            item.country = country
-
-            if(item.gamerooms.history_user_play != undefined) {
+            item.cost_price = (item_qty * item_price_usd).toFixed(4)
+            item.country = (country == undefined) ? "Unknown" : country_json[String(country).toUpperCase()]
+            
+            if (item.gamerooms.history_user_play != undefined) {
+                
                 var player = item.gamerooms.history_user_play.find(x => String(x.player_id) == String(item.player_id))
-
-                if (player){
+                
+                if (player) {
                     item.game_start = moment(player.timestamp).format("YYYY-MM-DD HH:mm:ss")
-                }else {
+                } else {
                     item.game_start = item.createdAt
                 }
-                
+
             } else {
                 item.game_start = item.createdAt
             }
@@ -233,10 +240,11 @@ async function run() {
 
             var game_start = moment(item.game_start)
             var game_end = moment(item.game_end)
-            item.time_play = Number(game_end.diff(game_start,"minute"))
-            data.push(item) 
+            item.time_play = Number(game_end.diff(game_start, "minute"))
+            delete item.player_id
+            data.push(item)
             i++
-            console.log(i, item._id , " of ",gamePlayData.length)
+            console.log(i, item._id, " of ", gamePlayData.length)
         });
 
         const csvWriter = createCsvWriter({

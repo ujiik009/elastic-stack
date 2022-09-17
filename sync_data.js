@@ -7,7 +7,14 @@ const urlWebHook = process.env.DISCORD_WEB_HOOK || "https://discord.com/api/webh
 const cron = require('node-cron');
 const client = new MongoClient(uri);
 const _ = require('underscore')
+
 var fs = require('fs');
+
+var country_json = JSON.parse(fs.readFileSync("./country.json", "utf8")) ;
+
+
+
+
 var query = {
     "query": {
         "match_all": {}
@@ -31,7 +38,7 @@ async function run() {
         const database = client.db('nakamotoDatabase');
         const PlayerGamePlayData = database.collection('playergameplaydatas');
         const gameItem = await database.collection("gameitems").find({}).toArray()
-        var response = await axios.post('http://localhost:9200/game_data_transcation/_doc/_search', query, {
+        var response = await axios.post(`${process.env.ELASTICSEARCH_URL}/game_data_transcation/_doc/_search`, query, {
             auth: {
                 username: process.env.ELASTICSEARCH_USER,
                 password: process.env.ELASTICSEARCH_PASSWORD
@@ -109,6 +116,7 @@ async function run() {
                     game_type: "$games.game_type",
                     used_items: 1,
                     country:1 ,
+                    play_to_earn: "$games.play_to_earn",
                 }
             },
             {
@@ -127,7 +135,7 @@ async function run() {
                  _id: 1,
                  createdAt: 1,
                  game_id: 1,
-                 player_id: 1,
+                //  player_id: 1,
                  username: 1,
                  // avatar: 1,
                  score: 1,
@@ -135,13 +143,16 @@ async function run() {
                  game_type: 1,
                  used_items: 1,
                  country:1 ,
-                 gamerooms :"$gamerooms"
+                 gamerooms :"$gamerooms",
+                 play_to_earn:1
              },
          },
         ]
-
+        console.log("Start Query Data");
         const gamePlayData = await PlayerGamePlayData.aggregate(mongoQuery);
+        console.log("Success Query Data");
         var data_record = []
+        var i = 0
         await gamePlayData.forEach((item, index) => {
 
             if (item._id !== undefined) delete item._id
@@ -149,7 +160,7 @@ async function run() {
             item.createdAt = moment(item.createdAt).format("YYYY-MM-DD HH:mm:ss")
             item.day_of_week = moment(item.createdAt).format("dddd")
             var [game_item] = item.used_items
-            var item_name = "unknow"
+            var item_name = "unknown"
             var item_qty = 0
             var item_price_usd = 0
             var country = item.country
@@ -162,14 +173,14 @@ async function run() {
                 }
             }
             if (country == undefined) {
-                country = "unknow"
+                country = "unknown"
             }
             item.item_name = item_name
             item.item_qty = item_qty
             item.item_price_usd = item_price_usd
             item["@timestamp"] = new Date(item.createdAt)
             item.cost_price = item_qty*item_price_usd
-            item.country = country
+            item.country = country_json[String(country).toUpperCase()]
             if(item.gamerooms.history_user_play != undefined) {
                 var player = item.gamerooms.history_user_play.find(x => String(x.player_id) == String(item.player_id))
 
@@ -193,6 +204,8 @@ async function run() {
                     data_record.push(item)
                 }
             }
+            i++
+            console.log(i, item._id , " of ",gamePlayData.length)
 
         })
         console.log(new Date(), "[Get Data from Mongo]", `Number of record : ${data_record.length}`);
@@ -211,7 +224,7 @@ async function run() {
                     .join("\n") + "\n"
             }).map((data_body) => {
 
-                return axios.post('http://localhost:9200/_bulk', data_body, {
+                return axios.post(`${process.env.ELASTICSEARCH_URL}/_bulk`, data_body, {
                     auth: {
                         username: process.env.ELASTICSEARCH_USER,
                         password: process.env.ELASTICSEARCH_PASSWORD
@@ -274,8 +287,8 @@ ${moment().format("YYYY-MM-DD HH:mm:ss")} : ${(status == true) ? "✅" : "❌"} 
     })
 }
 
-
-cron.schedule('*/5 * * * *', function () {
-    run().catch(console.dir);
-});
+run().catch(console.dir);
+// cron.schedule('*/5 * * * *', function () {
+//     run().catch(console.dir);
+// });
 
